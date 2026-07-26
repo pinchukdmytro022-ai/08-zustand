@@ -2,6 +2,7 @@ import { fetchNotes } from "@/lib/api";
 import NotesClient from "./Notes.client";
 import { Tag } from "@/types/note";
 import { Metadata } from "next";
+import { HydrationBoundary, QueryClient, dehydrate,} from "@tanstack/react-query";
 
 type Props = {
   params: Promise<{ slug: string[] }>;
@@ -10,6 +11,7 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const tag = slug[0] as Tag;
+
   return {
     title: `${tag} notes`,
     description:
@@ -24,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           : `All notes with tag ${tag}`,
       url:
         slug[0] === "all"
-          ? `https://08-zustand.vercel.app/notes/filter/all`
+          ? "https://08-zustand.vercel.app/notes/filter/all"
           : `https://08-zustand.vercel.app/notes/filter/${tag}`,
       images: [
         {
@@ -42,18 +44,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function Notes({ params }: Props) {
-  const initialQuery = "";
-  const initialPage = 1;
   const { slug } = await params;
   const tag = slug[0] === "all" ? undefined : (slug[0] as Tag);
-  const notes = await fetchNotes(initialQuery, initialPage, tag);
+  const queryClient = new QueryClient();
+
+  await queryClient.prefetchQuery({
+    queryKey: ["notes", "", 1, tag],
+    queryFn: () => fetchNotes("", 1, tag),
+  });
 
   return (
-    <NotesClient
-      initialQuery={initialQuery}
-      initialPage={initialPage}
-      tag={tag}
-      initialNotes={notes}
-    />
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <NotesClient tag={tag} />
+    </HydrationBoundary>
   );
 }
