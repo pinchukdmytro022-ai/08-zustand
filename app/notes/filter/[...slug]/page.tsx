@@ -52,7 +52,7 @@ export default async function Notes({ params }: Props) {
     <NotesClient
       initialQuery={initialQuery}
       initialPage={initialPage}
-      initialTag={tag}
+      tag={tag}
       initialNotes={notes}
     />
   );
