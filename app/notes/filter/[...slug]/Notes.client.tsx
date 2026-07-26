@@ -19,14 +19,14 @@ interface NoteData {
 type NotesClientProps = {
   initialQuery: string;
   initialPage: number;
-  initialTag?: Tag;
+  tag?: Tag;
   initialNotes: NoteData;
 };
 
 export default function NotesClient({
   initialQuery,
   initialPage,
-  initialTag,
+  tag,
   initialNotes,
 }: NotesClientProps) {
   const [query, setQuery] = useState(initialQuery);
@@ -39,8 +39,8 @@ export default function NotesClient({
   const [debouncedQuery] = useDebounce(query, 300);
 
   const { data, isSuccess } = useQuery({
-    queryKey: ["notes", debouncedQuery, page, initialTag],
-    queryFn: () => fetchNotes(debouncedQuery, page, initialTag),
+    queryKey: ["notes", debouncedQuery, page, tag],
+    queryFn: () => fetchNotes(debouncedQuery, page, tag),
     placeholderData: keepPreviousData,
     initialData: initialNotes,
   });
