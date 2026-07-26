@@ -1,135 +1,66 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useDebounce } from "use-debounce";
-
-import { fetchNotes} from "@/lib/api";
-
-import type { FilterTag } from "@/lib/constants";
-
+import css from "./App.module.css";
 import NoteList from "@/components/NoteList/NoteList";
+import Pagination from "@/components/Pagination/Pagination";
 import SearchBox from "@/components/SearchBox/SearchBox";
-import Loader from "@/components/Loader/Loader";
-import ErrorMessage from "@/components/ErrorMessage/ErrorMessage";
-import Pagination from "@/components//Pagination/Pagination";
-import Modal from "@/components/Modal/Modal";
-import NoteForm from "@/components/NoteForm/NoteForm";
+import type { Note, Tag } from "@/types/note";
+import { useState } from "react";
+import { useDebounce } from "use-debounce";
+import { fetchNotes } from "@/lib/api";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 
-import css from "./page.module.css";
-
-
-interface NotesClientProps {
-  tag?: FilterTag;
+interface NoteData {
+  notes: Note[];
+  totalPages: number;
 }
 
+type NotesClientProps = {
+  initialQuery: string;
+  initialPage: number;
+  initialTag?: Tag;
+  initialNotes: NoteData;
+};
 
 export default function NotesClient({
-  tag,
+  initialQuery,
+  initialPage,
+  initialTag,
+  initialNotes,
 }: NotesClientProps) {
-
-  const [page, setPage] = useState(1);
-  const [query, setQuery] = useState("");
-  const [isModal, setIsModal] = useState(false);
-
-  const [debouncedQuery] = useDebounce(query, 400);
-
-
-  useEffect(() => {
+  const [query, setQuery] = useState(initialQuery);
+  const [page, setPage] = useState(initialPage);
+  const updateQuery = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setQuery(event.target.value);
     setPage(1);
-  }, [debouncedQuery, tag]);
+  };
 
+  const [debouncedQuery] = useDebounce(query, 300);
 
-  const {
-    data,
-    isError,
-    isLoading,
-    isFetching,
-    isSuccess,
-  } = useQuery({
-
-    queryKey: [
-      "notes",
-      tag,
-      debouncedQuery,
-      page,
-    ],
-
-    queryFn: () =>
-      fetchNotes({
-        page,
-        search: debouncedQuery,
-        tag,
-      }),
-
+  const { data, isSuccess } = useQuery({
+    queryKey: ["notes", debouncedQuery, page, initialTag],
+    queryFn: () => fetchNotes(debouncedQuery, page, initialTag),
     placeholderData: keepPreviousData,
-    refetchOnMount: false,
+    initialData: initialNotes,
   });
 
-
-  const handleCreateNote = () => {
-    setIsModal(true);
-  };
-
-
-  const closeModal = () => {
-    setIsModal(false);
-  };
-
-
   return (
-    <>
-      <div className={css.app}>
-        <header className={css.toolbar}>
-          <SearchBox
-            value={query}
-            onChange={(query: string) =>
-              setQuery(query)
-            }
+    <div className={css.app}>
+      <header className={css.toolbar}>
+        <SearchBox query={query} updateQuery={updateQuery} />
+        {data?.totalPages && data.totalPages > 1 && (
+          <Pagination
+            page={page}
+            totalPages={data?.totalPages}
+            onPageChange={setPage}
           />
-
-          {isSuccess && data.totalPages > 1 && (
-            <Pagination
-              pageCount={data.totalPages}
-              currentPage={page}
-              onPageChange={(selectedPage: number) =>
-                setPage(selectedPage)
-              }
-            />
-          )}
-
-          <button
-            onClick={handleCreateNote}
-            className={css.button}
-          >
-            Create note +
-          </button>
-
-        </header>
-
-        {isModal && (
-          <Modal onClose={closeModal}>
-            <NoteForm onClose={closeModal} />
-          </Modal>
         )}
-
-        {(isLoading || isFetching) && <Loader />}
-
-        {isError && <ErrorMessage />}
-
-        {isSuccess &&
-          data?.notes?.length === 0 &&
-          <p>No notes found.</p>
-        }
-
-        {data?.notes &&
-          data.notes.length > 0 &&
-          (
-            <NoteList notes={data.notes} />
-          )
-        }
-
-      </div>
-    </>
+        <Link href="/notes/action/create" className={css.button}>
+          Create note +
+        </Link>
+      </header>
+      {isSuccess && data.notes.length > 0 && <NoteList notes={data.notes} />}
+    </div>
   );
 }

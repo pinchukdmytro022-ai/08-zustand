@@ -1,10 +1,10 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
-import { deleteNote } from "@/lib/api";
-import type { Note } from "@/types/note";
 import css from "./NoteList.module.css";
+import { Note } from "@/types/note";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { deleteNote } from "@/lib/api";
+import Link from "next/link";
 
 interface NoteListProps {
   notes: Note[];
@@ -13,33 +13,34 @@ interface NoteListProps {
 export default function NoteList({ notes }: NoteListProps) {
   const queryClient = useQueryClient();
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteNote,
+  const mutation = useMutation({
+    mutationFn: (id: number) => deleteNote(id),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["notes"] });
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
     },
   });
 
+  const handleDelete = (id: number) => {
+    mutation.mutate(id);
+  };
+
   return (
     <ul className={css.list}>
-      {notes.map((note) => (
-        <li key={note.id} className={css.listItem}>
-          <h2 className={css.title}>{note.title}</h2>
-
-          <p className={css.content}>{note.content}</p>
-
+      {notes.map(({ title, content, tag, id }) => (
+        <li className={css.listItem} key={id}>
+          <h2 className={css.title}>{title}</h2>
+          <p className={css.content}>{content}</p>
           <div className={css.footer}>
-            <span className={css.tag}>{note.tag}</span>
-
-            <Link className={css.link} href={`/notes/${note.id}`}>
+            <span className={css.tag}>{tag}</span>
+            <Link href={`/notes/${id}`} className={css.link}>
               View details
             </Link>
-
             <button
+              onClick={() => {
+                handleDelete(id);
+              }}
               className={css.button}
-              type="button"
-              onClick={() => deleteMutation.mutate(note.id)}
-              disabled={deleteMutation.isPending}
+              disabled={mutation.isPending}
             >
               Delete
             </button>
